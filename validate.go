@@ -6,18 +6,18 @@ import (
 	"strings"
 )
 
-type parameters struct {
+type ChirpParameters struct {
 	Body string `json:"body"`
 }
 
-type cleanParams struct {
+type cleanChirp struct {
 	CleanedBody string `json:"cleaned_body"`
 }
 
 func handlerValidate(w http.ResponseWriter, r *http.Request) {
 	// decode request body
 	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
+	params := ChirpParameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
@@ -35,7 +35,7 @@ func handlerValidate(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, clearChirp(params))
 }
 
-func clearChirp(p parameters) cleanParams {
+func clearChirp(p ChirpParameters) cleanChirp {
 	body := strings.Split(p.Body, " ")
 	for i, word := range body {
 		if strings.ToLower(word) == "kerfuffle" || strings.ToLower(word) == "sharbert" || strings.ToLower(word) == "fornax" {
@@ -43,7 +43,7 @@ func clearChirp(p parameters) cleanParams {
 		}
 	}
 
-	return cleanParams{
+	return cleanChirp{
 		CleanedBody: strings.Join(body, " "),
 	}
 }
