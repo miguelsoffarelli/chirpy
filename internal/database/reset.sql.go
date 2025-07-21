@@ -9,8 +9,17 @@ import (
 	"context"
 )
 
+const resetChirps = `-- name: ResetChirps :exec
+TRUNCATE TABLE chirps
+`
+
+func (q *Queries) ResetChirps(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, resetChirps)
+	return err
+}
+
 const resetUsers = `-- name: ResetUsers :exec
-TRUNCATE TABLE users
+TRUNCATE TABLE users CASCADE
 `
 
 func (q *Queries) ResetUsers(ctx context.Context) error {

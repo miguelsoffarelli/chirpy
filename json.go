@@ -32,3 +32,13 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.WriteHeader(code)
 	w.Write(dat)
 }
+
+func decodeJSON(r *http.Request, payload interface{}) error {
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

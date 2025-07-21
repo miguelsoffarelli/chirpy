@@ -1,2 +1,5 @@
+-- name: ResetChirps :exec
+TRUNCATE TABLE chirps;
+
 -- name: ResetUsers :exec
-TRUNCATE TABLE users;
+TRUNCATE TABLE users CASCADE;

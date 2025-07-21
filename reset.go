@@ -8,8 +8,14 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := cfg.DB.ResetChirps(r.Context()); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+
 	if err := cfg.DB.ResetUsers(r.Context()); err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
 	}
 
 	cfg.fileserverHits.Store(0)

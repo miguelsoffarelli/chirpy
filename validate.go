@@ -1,41 +1,21 @@
 package main
 
 import (
-	"encoding/json"
-	"net/http"
 	"strings"
 )
 
-type ChirpParameters struct {
-	Body string `json:"body"`
-}
-
-type cleanChirp struct {
-	CleanedBody string `json:"cleaned_body"`
-}
-
-func handlerValidate(w http.ResponseWriter, r *http.Request) {
-	// decode request body
-	decoder := json.NewDecoder(r.Body)
-	params := ChirpParameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
-		return
-	}
-
+func validateChirp(params *chirpParameters) bool {
 	// length check
 	const maxChirpLen = 140
 	if len(params.Body) > maxChirpLen {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
-		return
+		return false
 	}
 
-	// OK response
-	respondWithJSON(w, http.StatusOK, clearChirp(params))
+	clearChirp(params)
+	return true
 }
 
-func clearChirp(p ChirpParameters) cleanChirp {
+func clearChirp(p *chirpParameters) {
 	body := strings.Split(p.Body, " ")
 	for i, word := range body {
 		if strings.ToLower(word) == "kerfuffle" || strings.ToLower(word) == "sharbert" || strings.ToLower(word) == "fornax" {
@@ -43,7 +23,5 @@ func clearChirp(p ChirpParameters) cleanChirp {
 		}
 	}
 
-	return cleanChirp{
-		CleanedBody: strings.Join(body, " "),
-	}
+	p.Body = strings.Join(body, " ")
 }
