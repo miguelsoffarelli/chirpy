@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/miguelsoffarelli/chirpy/internal/database"
@@ -11,6 +12,14 @@ import (
 type chirpParameters struct {
 	Body   string `json:"body"`
 	UserID string `json:"user_id"`
+}
+
+type Chirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +52,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, chirp)
+	respondWithJSON(w, http.StatusCreated, mapChirp(chirp))
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +67,13 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, chirps)
+	chirpsArr := make([]Chirp, 0)
+
+	for _, chirp := range chirps {
+		chirpsArr = append(chirpsArr, mapChirp(chirp))
+	}
+
+	respondWithJSON(w, http.StatusOK, chirpsArr)
 }
 
 func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
@@ -77,5 +92,15 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, chirp)
+	respondWithJSON(w, http.StatusOK, mapChirp(chirp))
+}
+
+func mapChirp(chirp database.Chirp) Chirp {
+	return Chirp{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	}
 }
