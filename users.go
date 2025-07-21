@@ -7,7 +7,6 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/miguelsoffarelli/chirpy/internal/database"
 )
 
 type User struct {
@@ -44,7 +43,7 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, mapUser(user))
+	respondWithJSON(w, http.StatusCreated, user)
 }
 
 // Check for SQL State 23505 for duplicate unique key
@@ -53,15 +52,4 @@ func isUniqueConstraintError(err error) bool {
 		return pqErr.Code == "23505"
 	}
 	return false
-}
-
-// Helper function to map a database.User into a main.User (the reason behind this
-// is to be able to control the JSON keys)
-func mapUser(user database.User) User {
-	return User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-	}
 }
