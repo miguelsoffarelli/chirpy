@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -63,6 +65,49 @@ func TestValidateJWT(t *testing.T) {
 		_, err = ValidateJWT(token, "")
 		if err == nil {
 			t.Fatalf("expected error when validating with wrong (empty) secret, got none")
+		}
+	})
+}
+
+func TestGetBearerToken(t *testing.T) {
+	headers := make(http.Header)
+
+	t.Run("basic get bearer token case", func(t *testing.T) {
+		tokenString := "TOKEN_STRING"
+		headers.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+		token, err := GetBearerToken(headers)
+		if err != nil {
+			t.Fatalf("error getting token: %v", err)
+		}
+
+		if token != "TOKEN_STRING" {
+			t.Fatalf("error: expected token %s, got %s", tokenString, token)
+		}
+	})
+
+	t.Run("get bearer token with empty token", func(t *testing.T) {
+		tokenString := ""
+		headers.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+		_, err := GetBearerToken(headers)
+		if err == nil {
+			t.Fatalf("empty token should return not nil error")
+		}
+	})
+
+	t.Run("get bearer token with no Authorization header", func(t *testing.T) {
+		headers.Del("Authorization")
+		_, err := GetBearerToken(headers)
+		if err == nil {
+			t.Fatalf("absence of Authorization header should return not nil error")
+		}
+	})
+
+	t.Run("get bearer token with token with whitespaces", func(t *testing.T) {
+		tokenString := "token with whitespaces"
+		headers.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+		_, err := GetBearerToken(headers)
+		if err == nil {
+			t.Fatalf("expecting error: invalid token, got: nil")
 		}
 	})
 }

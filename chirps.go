@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/miguelsoffarelli/chirpy/internal/auth"
 	"github.com/miguelsoffarelli/chirpy/internal/database"
 )
 
 type chirpParameters struct {
-	Body   string `json:"body"`
-	UserID string `json:"user_id"`
+	Body string `json:"body"`
 }
 
 type Chirp struct {
@@ -23,9 +23,20 @@ type Chirp struct {
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
-	params := chirpParameters{}
-	err := decodeJSON(r, &params)
+	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized: must be logged in to post chirp", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.SECRET)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error: Unauthorized", err)
+		return
+	}
+
+	params := chirpParameters{}
+	if err = decodeJSON(r, &params); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
 		return
 	}
@@ -35,15 +46,9 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	userUUID, err := uuid.Parse(params.UserID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID", err)
-		return
-	}
-
 	createChirpParams := database.CreateChirpParams{
 		Body:   params.Body,
-		UserID: userUUID,
+		UserID: userID,
 	}
 
 	chirp, err := cfg.DB.CreateChirp(r.Context(), createChirpParams)

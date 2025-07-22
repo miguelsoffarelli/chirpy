@@ -16,6 +16,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
@@ -40,6 +41,7 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
 	hashedPswd, err := auth.HashPassword(params.Password)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Password not valid", err)
+		return
 	}
 
 	createUserParams := database.CreateUserParams{
@@ -67,19 +69,25 @@ func isUniqueConstraintError(err error) bool {
 	return false
 }
 
-func mapUser(user database.User) User {
+func mapUser(user database.User, token ...string) User {
+	var userToken string
+	if len(token) > 0 {
+		userToken = token[0]
+	}
 	return User{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     userToken,
 	}
 }
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type loginParams struct {
-		Password string `json:"password"`
-		Email    string `json:"email"`
+		Password         string `json:"password"`
+		Email            string `json:"email"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
 	}
 
 	params := loginParams{}
@@ -87,6 +95,12 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
 		return
 	}
+
+	if params.ExpiresInSeconds == 0 {
+		params.ExpiresInSeconds = 3600
+	}
+
+	params.ExpiresInSeconds = min(params.ExpiresInSeconds, 3600)
 
 	user, err := cfg.DB.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
@@ -99,5 +113,11 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, mapUser(user))
+	token, err := auth.MakeJWT(user.ID, cfg.SECRET, time.Duration(params.ExpiresInSeconds)*time.Second)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error: Unauthorized", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, mapUser(user, token))
 }
