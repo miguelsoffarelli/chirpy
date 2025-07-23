@@ -25,13 +25,13 @@ type Chirp struct {
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized: must be logged in to post chirp", err)
+		respondWithError(w, http.StatusUnauthorized, "Authentication error: couldn't get access token", err)
 		return
 	}
 
 	userID, err := auth.ValidateJWT(token, cfg.SECRET)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized: must be logged in to post chirp", err)
+		respondWithError(w, http.StatusUnauthorized, "Authentication error: invalid or expired token", err)
 		return
 	}
 
@@ -100,7 +100,45 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, mapChirp(chirp))
 }
 
+func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Authentication error: couldn't get access token", err)
+	}
 
+	userID, err := auth.ValidateJWT(token, cfg.SECRET)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Authentication error: invalid or expired token", err)
+		return
+	}
+
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID", err)
+		return
+	}
+
+	chirp, err := cfg.DB.GetChirp(r.Context(), chirpID)
+	if err == sql.ErrNoRows {
+		respondWithError(w, http.StatusNotFound, "Chirp not found", nil)
+		return
+	} else if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+
+	if userID != chirp.UserID {
+		respondWithError(w, http.StatusForbidden, "Forbidden: can't delete chirps from other users!", err)
+		return
+	}
+
+	if err := cfg.DB.DeleteChirp(r.Context(), chirpID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Database error: couldn't delete chirp", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
+}
 
 func mapChirp(chirp database.Chirp) Chirp {
 	return Chirp{

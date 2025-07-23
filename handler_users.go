@@ -120,7 +120,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	token, err := auth.MakeJWT(user.ID, cfg.SECRET)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Authentication error", err)
+		respondWithError(w, http.StatusUnauthorized, "Authentication error: failed to create token", err)
 		return
 	}
 
@@ -165,7 +165,7 @@ func (cfg *apiConfig) handlerCredentials(w http.ResponseWriter, r *http.Request)
 
 	userID, err := auth.ValidateJWT(token, cfg.SECRET)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Invalid or expired access token", err)
+		respondWithError(w, http.StatusUnauthorized, "Authentication error: invalid or expired access token", err)
 		return
 	}
 
