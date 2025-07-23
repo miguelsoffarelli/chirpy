@@ -31,7 +31,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 
 	userID, err := auth.ValidateJWT(token, cfg.SECRET)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Error: Unauthorized", err)
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized: must be logged in to post chirp", err)
 		return
 	}
 
@@ -99,6 +99,8 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJSON(w, http.StatusOK, mapChirp(chirp))
 }
+
+
 
 func mapChirp(chirp database.Chirp) Chirp {
 	return Chirp{

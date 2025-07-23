@@ -120,7 +120,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	token, err := auth.MakeJWT(user.ID, cfg.SECRET)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Error: Unauthorized", err)
+		respondWithError(w, http.StatusUnauthorized, "Authentication error", err)
 		return
 	}
 
@@ -143,4 +143,49 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, mapUser(user, token, refreshToken))
+}
+
+func (cfg *apiConfig) handlerCredentials(w http.ResponseWriter, r *http.Request) {
+	type credentialsParams struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	params := credentialsParams{}
+	if err := decodeJSON(r, &params); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
+		return
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Authentication error: couldn't get access token", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.SECRET)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid or expired access token", err)
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error: couldn't hash password", err)
+		return
+	}
+
+	updateCredentialsParams := database.UpdateCredentialsParams{
+		ID:             userID,
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
+	}
+
+	updatedUser, err := cfg.DB.UpdateCredentials(r.Context(), updateCredentialsParams)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Database error: failed to update credentials", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, mapUser(updatedUser))
 }

@@ -42,12 +42,12 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, errors.New("invalid token")
 	}
 
-	id, err := uuid.Parse(claims.Subject)
+	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	return id, nil
+	return userID, nil
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
@@ -57,7 +57,7 @@ func GetBearerToken(headers http.Header) (string, error) {
 	// If the length of the resulting array is different than 2
 	// or if the second element is empty, return an error
 	if len(token) != 2 || token[1] == "" {
-		return "", fmt.Errorf("invalid authorization header")
+		return "", fmt.Errorf("invalid authentication header")
 	}
 
 	return token[1], nil
