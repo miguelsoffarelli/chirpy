@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -12,11 +13,12 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
 }
 
 func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
@@ -69,17 +71,20 @@ func isUniqueConstraintError(err error) bool {
 	return false
 }
 
-func mapUser(user database.User, token ...string) User {
+func mapUser(user database.User, tokens ...string) User {
 	var userToken string
-	if len(token) > 0 {
-		userToken = token[0]
+	var refresh_token string
+	if len(tokens) > 0 {
+		userToken = tokens[0]
+		refresh_token = tokens[1]
 	}
 	return User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     userToken,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        userToken,
+		RefreshToken: refresh_token,
 	}
 }
 
@@ -113,11 +118,29 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.SECRET, time.Duration(params.ExpiresInSeconds)*time.Second)
+	token, err := auth.MakeJWT(user.ID, cfg.SECRET)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Error: Unauthorized", err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, mapUser(user, token))
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error creating refresh token", err)
+		return
+	}
+
+	refreshTokenParams := database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 60),
+		RevokedAt: sql.NullTime{},
+	}
+
+	if _, err := cfg.DB.CreateRefreshToken(r.Context(), refreshTokenParams); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error storing refresh token in database", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, mapUser(user, token, refreshToken))
 }

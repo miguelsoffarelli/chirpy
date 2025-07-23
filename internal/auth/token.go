@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,11 +13,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+func MakeJWT(userID uuid.UUID, tokenSecret string) (string, error) {
 	claims := &jwt.RegisteredClaims{
 		Issuer:    "chirpy",
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Hour)),
 		Subject:   userID.String(),
 	}
 
@@ -59,4 +61,14 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 
 	return token[1], nil
+}
+
+func MakeRefreshToken() (string, error) {
+	token := make([]byte, 32)
+	if _, err := rand.Read(token); err != nil {
+		return "", err
+	}
+
+	hexToken := hex.EncodeToString(token)
+	return hexToken, nil
 }
