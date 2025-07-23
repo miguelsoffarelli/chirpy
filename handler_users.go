@@ -19,6 +19,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +86,7 @@ func mapUser(user database.User, tokens ...string) User {
 		Email:        user.Email,
 		Token:        userToken,
 		RefreshToken: refresh_token,
+		IsChirpyRed:  user.IsChirpyRed,
 	}
 }
 
@@ -188,4 +190,31 @@ func (cfg *apiConfig) handlerCredentials(w http.ResponseWriter, r *http.Request)
 	}
 
 	respondWithJSON(w, http.StatusOK, mapUser(updatedUser))
+}
+
+func (cfg *apiConfig) handlerChirpyRed(w http.ResponseWriter, r *http.Request) {
+	type ChirpyRedParams struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserID uuid.UUID `json:"user_id"`
+		} `json:"data"`
+	}
+
+	params := ChirpyRedParams{}
+	if err := decodeJSON(r, &params); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Something went wrong", err)
+		return
+	}
+
+	if params.Event != "user.upgraded" {
+		respondWithJSON(w, http.StatusNoContent, nil)
+		return
+	}
+
+	if err := cfg.DB.UpgradeUser(r.Context(), params.Data.UserID); err != nil {
+		respondWithError(w, http.StatusNotFound, "Error: user not found", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
 }
