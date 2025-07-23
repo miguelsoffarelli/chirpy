@@ -51,9 +51,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
-	// Authorization header should look like "Bearer TOKEN_STRING"
-	// Split it to get only the "TOKEN_STRING" part
-	token := strings.Split(headers.Get("Authorization"), " ")
+	token := strings.Fields(headers.Get("Authorization"))
 	// If the length of the resulting array is different than 2
 	// or if the second element is empty, return an error
 	if len(token) != 2 || token[1] == "" {

@@ -206,6 +206,17 @@ func (cfg *apiConfig) handlerChirpyRed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	apiKey, err := auth.GetApiKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Something went wrong", err)
+		return
+	}
+
+	if apiKey != cfg.POLKA_KEY {
+		respondWithError(w, http.StatusUnauthorized, "Error: invalid api key", nil)
+		return
+	}
+
 	if params.Event != "user.upgraded" {
 		respondWithJSON(w, http.StatusNoContent, nil)
 		return

@@ -17,6 +17,7 @@ type apiConfig struct {
 	DB             *database.Queries
 	PLATFORM       string
 	SECRET         string
+	POLKA_KEY      string
 }
 
 func main() {
@@ -34,6 +35,7 @@ func main() {
 	dbQueries := database.New(db)
 	platform := os.Getenv("PLATFORM")
 	secret := os.Getenv("SECRET")
+	polkaApiKey := os.Getenv("POLKA_KEY")
 
 	const filepathRoot = "."
 	const port = "8080"
@@ -43,6 +45,7 @@ func main() {
 		DB:             dbQueries,
 		PLATFORM:       platform,
 		SECRET:         secret,
+		POLKA_KEY:      polkaApiKey,
 	}
 
 	mux := http.NewServeMux()
