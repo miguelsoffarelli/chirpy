@@ -61,15 +61,39 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.DB.GetChirps(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
-		return
-	}
+	var chirps []database.Chirp
+	var err error
+	author := r.URL.Query().Get("author_id")
+	var authorID uuid.UUID
 
-	if len(chirps) == 0 {
-		respondWithError(w, http.StatusOK, "There is no chirps to show", nil)
-		return
+	if author != "" {
+		authorID, err = uuid.Parse(author)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid author id", err)
+			return
+		}
+
+		chirps, err = cfg.DB.GetChirpsByAuthor(r.Context(), authorID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+			return
+		}
+
+		if len(chirps) == 0 {
+			respondWithJSON(w, http.StatusOK, make([]database.Chirp, 0))
+			return
+		}
+	} else {
+		chirps, err = cfg.DB.GetChirps(r.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+			return
+		}
+
+		if len(chirps) == 0 {
+			respondWithJSON(w, http.StatusOK, make([]database.Chirp, 0))
+			return
+		}
 	}
 
 	chirpsArr := make([]Chirp, 0)
