@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,6 +65,7 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	var chirps []database.Chirp
 	var err error
 	author := r.URL.Query().Get("author_id")
+	sortBy := r.URL.Query().Get("sort")
 	var authorID uuid.UUID
 
 	if author != "" {
@@ -96,13 +98,18 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	chirpsArr := make([]Chirp, 0)
+	chirpsSlice := make([]Chirp, 0)
 
 	for _, chirp := range chirps {
-		chirpsArr = append(chirpsArr, mapChirp(chirp))
+		chirpsSlice = append(chirpsSlice, mapChirp(chirp))
 	}
 
-	respondWithJSON(w, http.StatusOK, chirpsArr)
+	if sortBy == "desc" {
+		sort.Slice(chirpsSlice, func(i, j int) bool { return chirpsSlice[i].CreatedAt.After(chirpsSlice[j].CreatedAt) })
+	} // no need to sort in case of "asc" or default (no sort query) because
+	// the results already come sorted in ASC order from the database
+
+	respondWithJSON(w, http.StatusOK, chirpsSlice)
 }
 
 func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
